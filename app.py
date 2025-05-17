@@ -107,6 +107,7 @@ def main():
     st.set_page_config(page_title="熊本お出かけ情報一覧", layout="wide", initial_sidebar_state="expanded")
 
     # --- サイドバー ---
+    st.sidebar.title("🏞️熊本お出かけナビ")
     if st.sidebar.button("お出かけ情報を取得する", type="primary"):
         st.session_state.data_loaded = True # ボタンが押されたことを記録
         with st.spinner("イベント情報を取得中... 1分ほどお待ちください。"):
