@@ -4,6 +4,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService # 追加
 from webdriver_manager.chrome import ChromeDriverManager # 追加
+from webdriver_manager.core.os_manager import ChromeType # 追加
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 import io # Excel出力のために追加
@@ -26,7 +27,7 @@ def scrape_kumanichi_events():
 
     try:
         # ChromeDriverを自動的にダウンロード・管理
-        service = ChromeService(ChromeDriverManager().install())
+        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
         browser = webdriver.Chrome(service=service, options=options)
         browser.set_page_load_timeout(30) # ページ読み込みタイムアウトを30秒に設定
         browser.get(TARGET_URL)
