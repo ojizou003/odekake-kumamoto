@@ -101,23 +101,23 @@ def scrape_kumanichi_events():
 
     return event_df
 
+
 # --- Streamlit アプリケーション ---
 def main():
     st.set_page_config(page_title="熊本お出かけ情報一覧", layout="wide", initial_sidebar_state="expanded")
 
     # --- サイドバー ---
-    st.sidebar.title("🏞️熊本お出かけナビ")
-    st.sidebar.markdown(f"情報元:\n{TARGET_URL}")
-
     if st.sidebar.button("お出かけ情報を取得する", type="primary"):
         st.session_state.data_loaded = True # ボタンが押されたことを記録
         with st.spinner("イベント情報を取得中... 1分ほどお待ちください。"):
             st.session_state.df_events = scrape_kumanichi_events() # 結果をセッション状態に保存
+    st.sidebar.caption("⚠️最新の情報取得に1分ほどかかります")
     
     st.sidebar.markdown("---")
 
     st.sidebar.image("aso-kumamon.jpg")
     st.sidebar.markdown("<div style='text-align: right;'>© 2025 ojizou003</div>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"情報元:\n{TARGET_URL}")
 
     # --- メインコンテンツ ---
     st.title("📅 熊本お出かけ情報")
