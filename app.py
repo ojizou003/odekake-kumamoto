@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService # 追加
+from webdriver_manager.chrome import ChromeDriverManager # 追加
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 import io # Excel出力のために追加
@@ -23,7 +25,9 @@ def scrape_kumanichi_events():
     error_messages = [] # 個別の軽微なエラーメッセージを収集
 
     try:
-        browser = webdriver.Chrome(options=options)
+        # ChromeDriverを自動的にダウンロード・管理
+        service = ChromeService(ChromeDriverManager().install())
+        browser = webdriver.Chrome(service=service, options=options)
         browser.set_page_load_timeout(30) # ページ読み込みタイムアウトを30秒に設定
         browser.get(TARGET_URL)
         browser.implicitly_wait(10) # 要素が見つかるまでの暗黙的な待機時間
@@ -93,7 +97,6 @@ def scrape_kumanichi_events():
         st.warning(msg)
 
     event_df = pd.DataFrame(event_data)
-    browser.quit()
 
     return event_df
 
