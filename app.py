@@ -3,6 +3,7 @@ import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 import io # Excel出力のために追加
 
 # --- 定数定義 ---
@@ -12,29 +13,85 @@ TARGET_URL = "https://kumanichi.com/event"
 def scrape_kumanichi_events():
     options = Options()
     options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-dev-shm-usage")
 
-    browser = webdriver.Chrome(options=options)
-    browser.get(TARGET_URL)
-    browser.implicitly_wait(10)
-
-    info = browser.find_element(By.CLASS_NAME, "y2024-card-group")
-    events = info.find_elements(By.TAG_NAME, "li")
-
+    browser = None
     event_data = []
-    for event in events:
-        title = event.find_element(By.CLASS_NAME, "y2024-card__heading").text
-        date = event.find_elements(By.CLASS_NAME, "y2024-text-01")[0].text
-        try:
-            location = event.find_elements(By.CLASS_NAME, "y2024-text-01")[1].text.replace('\u3000', ' ')
-        except:
-            location = "詳細はイベントURL参照"
-        url = event.find_element(By.TAG_NAME, "a").get_attribute('href')
-        event_data.append({
-            "イベントタイトル": title,
-            "期日・期間": date,
-            "開催場所": location,
-            "イベントURL": url
-        })
+    error_messages = [] # 個別の軽微なエラーメッセージを収集
+
+    try:
+        browser = webdriver.Chrome(options=options)
+        browser.set_page_load_timeout(30) # ページ読み込みタイムアウトを30秒に設定
+        browser.get(TARGET_URL)
+        browser.implicitly_wait(10) # 要素が見つかるまでの暗黙的な待機時間
+
+        info_container = browser.find_element(By.CLASS_NAME, "y2024-card-group")
+        event_elements = info_container.find_elements(By.TAG_NAME, "li")
+
+        if not event_elements:
+            st.warning("イベント情報が見つかりませんでした。ウェブサイトの構造が変更されたか、現在イベント情報がない可能性があります。")
+            return pd.DataFrame([])
+
+        for i, event_el in enumerate(event_elements):
+            title, date, location, url = "取得失敗", "取得失敗", "詳細はイベントURL参照", "#"
+
+            try:
+                title_el = event_el.find_element(By.CLASS_NAME, "y2024-card__heading")
+                title = title_el.text.strip() if title_el.text else "タイトルなし"
+            except NoSuchElementException:
+                error_messages.append(f"イベント {i+1}: タイトルが見つかりません。")
+
+            try:
+                details_els = event_el.find_elements(By.CLASS_NAME, "y2024-text-01")
+                if len(details_els) > 0:
+                    date = details_els[0].text.strip() if details_els[0].text else "日付情報なし"
+                else:
+                    error_messages.append(f"イベント '{title[:20]}...': 日付情報が見つかりません。")
+
+                if len(details_els) > 1:
+                    location = details_els[1].text.replace('\u3000', ' ').strip() if details_els[1].text else "場所情報なし"
+                # locationのデフォルトは "詳細はイベントURL参照" のまま
+            except NoSuchElementException: # find_elementsを使っているので稀だが念のため
+                error_messages.append(f"イベント '{title[:20]}...': 日付/場所の親要素が見つかりません。")
+
+            try:
+                link_el = event_el.find_element(By.TAG_NAME, "a")
+                url_attribute = link_el.get_attribute('href')
+                if url_attribute:
+                    url = url_attribute
+                else:
+                    error_messages.append(f"イベント '{title[:20]}...': URL属性が空です。")
+            except NoSuchElementException:
+                error_messages.append(f"イベント '{title[:20]}...': URLリンクが見つかりません。")
+
+            event_data.append({
+                "イベントタイトル": title,
+                "期日・期間": date,
+                "開催場所": location,
+                "イベントURL": url
+            })
+    except WebDriverException as e:
+        st.error(f"WebDriverエラーが発生しました: {e}\nChromeDriverのパスやバージョン、Chromeブラウザが正しくインストールされているか確認してください。")
+        return pd.DataFrame([])
+    except TimeoutException:
+        st.error(f"ウェブサイト ({TARGET_URL}) の読み込みがタイムアウトしました。インターネット接続を確認するか、後で再試行してください。")
+        return pd.DataFrame([])
+    except NoSuchElementException as e:
+        st.error(f"スクレイピングに必要な主要なページ要素が見つかりませんでした (エラー: {e.msg})。ウェブサイトの構造が変更された可能性があります。")
+        return pd.DataFrame([])
+    except Exception as e:
+        st.error(f"スクレイピング中に予期せぬエラーが発生しました: {type(e).__name__} - {e}")
+        return pd.DataFrame([])
+    finally:
+        if browser:
+            browser.quit()
+
+    for msg in error_messages:
+        st.warning(msg)
+
     event_df = pd.DataFrame(event_data)
     browser.quit()
 
@@ -119,7 +176,7 @@ def main():
 
         # scrape_kumanichi_events関数内でエラー/情報メッセージが表示されるので、ここでは追加メッセージは最小限に
     else:
-        st.info("サイドバーの「お出かけ情報を取得する」ボタンを押して、最新情報を取得してください。")
+        st.info("サイドバーの「お出かけ情報を取得する」ボタンを押して、最新情報を表示してください。")
 
 if __name__ == "__main__":
     main()
