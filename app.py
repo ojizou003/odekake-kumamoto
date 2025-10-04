@@ -8,6 +8,7 @@ from webdriver_manager.core.os_manager import ChromeType # 追加
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, WebDriverException
 import io # Excel出力のために追加
+import shutil
 
 # --- 定数定義 ---
 TARGET_URL = "https://kumanichi.com/event"
@@ -26,8 +27,12 @@ def scrape_kumanichi_events():
     error_messages = [] # 個別の軽微なエラーメッセージを収集
 
     try:
-        # ChromeDriverを自動的にダウンロード・管理
-        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+        # システムに入っているchromedriverを探す
+        chromedriver_path = shutil.which("chromedriver")
+        if chromedriver_path is None:
+            raise RuntimeError("chromedriver が見つかりません。packages.txt に 'chromium-driver' を追加してください。")
+
+        service = ChromeService(chromedriver_path)
         browser = webdriver.Chrome(service=service, options=options)
         browser.set_page_load_timeout(30) # ページ読み込みタイムアウトを30秒に設定
         browser.get(TARGET_URL)
