@@ -27,7 +27,7 @@ def scrape_kumanichi_events():
 
     try:
         # ChromeDriverを自動的にダウンロード・管理
-        service = ChromeService(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+        service = ChromeService(ChromeDriverManager().install())
         browser = webdriver.Chrome(service=service, options=options)
         browser.set_page_load_timeout(30) # ページ読み込みタイムアウトを30秒に設定
         browser.get(TARGET_URL)
